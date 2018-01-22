@@ -3,6 +3,7 @@ Pytorch Implementation for Paper: Learning to Compare: Relation Network for Few-
 
 # Howto
 download mini-imagenet and make it looks like:
+```shell
 mini-imagenet/
 	├── images
 			├── n0210891500001298.jpg  
@@ -19,7 +20,7 @@ LearningToCompare-Pytorch/
 	├── repnet.py
 	├── train.py
 	└── utils.py
-
+```
 
 
 ```python
