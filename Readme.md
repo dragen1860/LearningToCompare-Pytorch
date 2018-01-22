@@ -2,6 +2,26 @@
 Pytorch Implementation for Paper: Learning to Compare: Relation Network for Few-Shot Learning
 
 # Howto
+download mini-imagenet and make it looks like:
+mini-imagenet/
+	├── images
+			├── n0210891500001298.jpg  
+			├── n0287152500001298.jpg 
+			...
+	├── test.csv
+	├── val.csv
+	└── train.csv
+
+LearningToCompare-Pytorch/
+	├── compare.py
+	├── MiniImagenet.py
+	├── Readme.md
+	├── repnet.py
+	├── train.py
+	└── utils.py
+
+
+
 ```python
 python train.py
 ```
