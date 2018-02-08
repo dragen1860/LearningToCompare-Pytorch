@@ -62,12 +62,12 @@ class Cub(Dataset):
 			self.att_label_by_cls, indices = np.unique(self.x_label, return_index=True)
 			self.att_by_cls = self.att[indices]
 
-			print('==x:', self.x.shape)
-			print('x_label', self.x_label.shape)
-			print('att:', self.att.shape)
-			print('att label:', self.att_label.shape)
-			print('att cls:', self.att_by_cls.shape)
-			print('att cls label:', self.att_label_by_cls.shape)
+			# print('==x:', self.x.shape)
+			# print('x_label', self.x_label.shape)
+			# print('att:', self.att.shape)
+			# print('att label:', self.att_label.shape)
+			# print('att cls:', self.att_by_cls.shape)
+			# print('att cls label:', self.att_label_by_cls.shape)
 
 
 			# for idx, x in enumerate(self.x):
@@ -118,19 +118,22 @@ class Cub(Dataset):
 		selected_x_label = []
 		for att_label in selected_att_label:
 			# randomly select 1 img which has the same label.
-			idxs = np.random.choice(np.where(self.x_label == att_label)[0], self.k_query)[0]
+			# [k_query]
+			idxs = np.random.choice(np.where(self.x_label == att_label)[0], self.k_query)
 			# get the img's features and img's label
-			f = self.x[idxs]
-			f_label = self.x_label[idxs]
+			# [k_query, 1024]
+			# [k_query]
+			xs = self.x[idxs]
+			xs_label = self.x_label[idxs]
 
-			# todo:
-
-			selected_x.append(f)
-			selected_x_label.append(f_label)
+			selected_x.append(xs)
+			selected_x_label.append(xs_label)
 
 		# selected_x_label has the order with selected_att_label here.
-		selected_x = np.array(selected_x)
-		selected_x_label = np.array(selected_x_label)
+		# selected_x: [n_way, k_query, 1024] => [setsz, 1024]
+		# selected_x_label: [n_way, k_query] => [setsz]
+		selected_x = np.array(selected_x).reshape(-1, 1024)
+		selected_x_label = np.array(selected_x_label).reshape(-1)
 
 
 		x = torch.from_numpy(selected_x).float()
@@ -139,9 +142,9 @@ class Cub(Dataset):
 		att_label = torch.from_numpy(selected_att_label).long()
 
 		# shuffle x & x_label in case it owns the same order with att_label
-		# shuffle_idx = torch.randperm(self.n_way)
-		# x = x[shuffle_idx]
-		# x_label = x_label[shuffle_idx]
+		shuffle_idx = torch.randperm(self.n_way)
+		x = x[shuffle_idx]
+		x_label = x_label[shuffle_idx]
 
 		# print('selected_imgs', np.array(selected_imgs)[shuffle_idx][:5])
 		# print('imgs:', x.size())

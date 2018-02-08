@@ -22,7 +22,7 @@ def evaluation(net, n_way, k_query, mdl_file):
 	:return:
 	"""
 	# we need to test 11788 - 8855 = 2933 images.
-	db = Cub('../CUB_data/', n_way, k_query, train=False, episode_num= 3000//n_way//k_query)
+	db = Cub('../CUB_data/', n_way, k_query, train=False, episode_num= 6000//n_way//k_query)
 	db_loader = DataLoader(db, 1, shuffle=True, num_workers=2, pin_memory=True)
 
 	accs = []
@@ -60,9 +60,9 @@ def evaluation(net, n_way, k_query, mdl_file):
 
 def main():
 
-	batchsz = 1
+	batchsz = 10
 	n_way = 50
-	k_query = 20
+	k_query = 10
 	lr = 1e-5
 	mdl_file = 'ckpt/cub.mdl'
 
@@ -92,7 +92,7 @@ def main():
 		for step, batch in enumerate(db_loader):
 
 			# 1. test
-			if step % 400 == 0:
+			if step % 800 == 0:
 				accuracy = evaluation(net, n_way, k_query, mdl_file)
 				scheduler.step(accuracy)
 
@@ -112,11 +112,11 @@ def main():
 			# if np.random.randint(1000)<2:
 			# 	for p in net.parameters():
 			# 		print(p.grad.norm(2).data[0])
-			nn.utils.clip_grad_norm(net.parameters(), 1)
+			# nn.utils.clip_grad_norm(net.parameters(), 1)
 			optimizer.step()
 
 			# 3. print
-			if step % 20 == 0 and step != 0:
+			if step % 40 == 0 and step != 0:
 				print('%d-way %d batch> epoch:%d step:%d, loss:%f' % (
 				n_way,  batchsz, epoch, step, loss.data[0]) )
 				total_train_loss = 0
