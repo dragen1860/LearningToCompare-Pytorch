@@ -17,11 +17,46 @@ class Zeroshot(nn.Module):
 
 		self.o = nn.Sequential(nn.Linear(self.att_dim * 2, 900),
 		                       nn.ReLU(inplace=True),
-		                       nn.Linear(900, 128),
-		                       nn.ReLU(inplace=True),
-		                       nn.Linear(128, 1))
+		                       nn.Linear(900, 1),
+		                       nn.Sigmoid())
 
 
+	def forward2(self, x, x_label, att, att_label, train = True):
+		# x_label, indices = torch.sort(x_label, dim=1)
+		# x = torch.gather(x, dim=1, index= indices)
+		#
+		# att_label, indices = torch.sort(att_label, dim=1)
+		# att = torch.gather(att, dim=1, index= indices)
+
+		batchsz, setsz, c = x.size()
+		n_way = att.size(1)
+
+		x = x.view(batchsz * setsz, c)
+		att = att.view(batchsz * n_way, 312)
+
+		# [b*n_way, 312] => [b*n_way, 1024]
+		att = self.attnet(att)
+
+		if np.random.randint(1000)<3:
+			print('x ll:', x_label[0].cpu().data.numpy())
+			print('attl:', att_label[0].cpu().data.numpy())
+
+
+		if train:
+			loss = torch.pow(att - x, 2).sum() / batchsz / setsz
+			return loss
+
+		else:
+			x = x.view(batchsz, setsz, c)
+			att = att.view(batchsz, n_way, 1024)
+			x = x.unsqueeze(2).expand(batchsz, setsz, n_way, c)
+			att = att.unsqueeze(1).expand(batchsz, setsz, n_way, c)
+			# [b, setsz, n, c] => [b, setsz, n] => [b, setsz]
+			_, indices = torch.pow(x - att, 2).sum(3).min(2)
+			# [b, setsz]
+			pred = torch.gather(att_label, 1, index=indices)
+			correct = torch.eq(pred, x_label).sum()
+			return pred, correct
 
 
 	def forward(self, x, x_label, att, att_label, train = True):
@@ -67,10 +102,16 @@ class Zeroshot(nn.Module):
 		# score: [b, setsz, n_way]
 		# label: [b, setsz, n_way]
 		if train:
-			loss = torch.pow(label - score, 2).sum()
+			# if np.random.randint(1000)<2:
+			# 	print('x ll:', x_label[0].cpu().data.numpy())
+			# 	print('attl:', att_label[0].cpu().data.numpy())
+			# 	print('label', label[0])
+			# 	print('score', score[0])
+			loss = torch.pow(label - score, 2).sum() / batchsz / setsz
 			return loss
 
 		else:
+
 			# [b, setsz, n_way] => [b, setsz]
 			_, indices = score.max(dim = 2)
 			# att_label: [b, n_way]

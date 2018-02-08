@@ -13,7 +13,7 @@ from cub2 import Cub
 
 # save best acc info, to save the best model to ckpt.
 best_accuracy = 0
-def evaluation(net, batchsz, n_way, mdl_file):
+def evaluation(net, n_way, k_query, mdl_file):
 	"""
 	obey the expriment setting of MAML and Learning2Compare, we randomly sample 600 episodes and 15 query images per query
 	set.
@@ -22,9 +22,8 @@ def evaluation(net, batchsz, n_way, mdl_file):
 	:return:
 	"""
 	# we need to test 11788 - 8855 = 2933 images.
-	k_query = 1
 	db = Cub('../CUB_data/', n_way, k_query, train=False, episode_num= 3000//n_way//k_query)
-	db_loader = DataLoader(db, batchsz, shuffle=True, num_workers=2, pin_memory=True)
+	db_loader = DataLoader(db, 1, shuffle=True, num_workers=2, pin_memory=True)
 
 	accs = []
 	for batch in db_loader:
@@ -41,13 +40,14 @@ def evaluation(net, batchsz, n_way, mdl_file):
 		acc = correct / ( x_label.size(0) * x_label.size(1) )
 		accs.append(acc)
 
-	print(pred.cpu().data[0].numpy())
+		# if np.random.randint(10)<1:
+		# 	print(pred[0].cpu().data.numpy(), att_label[0].cpu().data.numpy())
 	print(accs)
 
 	# compute the distribution of 600/episodesz episodes acc.
 	global best_accuracy
 	accuracy = np.array(accs).mean()
-	print('<<<<<<<<< accuracy:', accuracy, 'best accuracy:', best_accuracy, '>>>>>>>>')
+	print('<<<<<<<<< %d way accuracy:'%n_way, accuracy, 'best accuracy:', best_accuracy, '>>>>>>>>')
 
 	if accuracy > best_accuracy:
 		best_accuracy = accuracy
@@ -60,9 +60,9 @@ def evaluation(net, batchsz, n_way, mdl_file):
 
 def main():
 
-	batchsz = 40
+	batchsz = 1
 	n_way = 50
-	k_query = 5
+	k_query = 20
 	lr = 1e-5
 	mdl_file = 'ckpt/cub.mdl'
 
@@ -93,7 +93,7 @@ def main():
 
 			# 1. test
 			if step % 400 == 0:
-				accuracy = evaluation(net, batchsz, n_way, mdl_file)
+				accuracy = evaluation(net, n_way, k_query, mdl_file)
 				scheduler.step(accuracy)
 
 			# 2. train
@@ -104,18 +104,21 @@ def main():
 
 			net.train()
 			loss = net(x, x_label, att, att_label)
-			loss = loss.sum() / (x_label.size(0) * x_label.size(1) ) # multi-gpu, divide by total batchsz
+			loss = loss.sum()
 			total_train_loss += loss.data[0]
 
 			optimizer.zero_grad()
 			loss.backward()
-			# nn.utils.clip_grad_norm(net.parameters(), 10)
+			# if np.random.randint(1000)<2:
+			# 	for p in net.parameters():
+			# 		print(p.grad.norm(2).data[0])
+			nn.utils.clip_grad_norm(net.parameters(), 1)
 			optimizer.step()
 
 			# 3. print
 			if step % 20 == 0 and step != 0:
 				print('%d-way %d batch> epoch:%d step:%d, loss:%f' % (
-				n_way,  batchsz, epoch, step, total_train_loss) )
+				n_way,  batchsz, epoch, step, loss.data[0]) )
 				total_train_loss = 0
 
 

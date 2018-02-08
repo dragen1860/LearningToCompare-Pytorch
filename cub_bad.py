@@ -28,7 +28,7 @@ class Cub(Dataset):
 	class_attribute_labels_continuous['classAttributes'].shape= (200, 312)
 
 	"""
-	def __init__(self, root, n_way, k_query, train = True, episode_num = 50000):
+	def __init__(self, root, n_way, k_query, train = True, episode_num = 10000):
 		"""
 		Actually, the image here act as query role. we want to find the closed attribute item for each image.
 		:param root:
@@ -55,35 +55,44 @@ class Cub(Dataset):
 			self.att = io.loadmat(os.path.join(root, 'train_attr.mat'))
 			self.att = self.att['train_attr']
 
-			self.x_label = io.loadmat(os.path.join(root, 'train_labels_cub.mat'))
-			self.x_label = self.x_label['train_labels_cub'].reshape(-1)
-			self.att_label = self.x_label
 
-			self.att_label_by_cls, indices = np.unique(self.x_label, return_index=True)
-			self.att_by_cls = self.att[indices]
+			x_label = [0]
+			att_cls_label = [0]
+			att_cls = [self.att[0]]
+			for idx in range(self.att.shape[0]):
+				if idx + 1 == self.att.shape[0]:
+					break
+				if np.array_equal(self.att[idx+1], self.att[idx]):
+					x_label.append(x_label[-1])
+				else:
+					x_label.append(x_label[-1] + 1)
+					# x_label has been updated!
+					att_cls_label.append(x_label[-1])
+					att_cls.append(self.att[idx + 1])
 
-			print('==x:', self.x.shape)
-			print('x_label', self.x_label.shape)
-			print('att:', self.att.shape)
-			print('att label:', self.att_label.shape)
-			print('att cls:', self.att_by_cls.shape)
-			print('att cls label:', self.att_label_by_cls.shape)
+			x_label = np.array(x_label)
+			att_cls_label = np.array(att_cls_label)
+			att_cls = np.array(att_cls)
+			# print('x_label', x_label.shape)
+			# print('att label:', att_cls_label.shape)
+			# print('att:', att_cls.shape)
 
+			self.x_label = x_label
 
-			# for idx, x in enumerate(self.x):
-			# 	x_label = self.x_label[idx]
-			# 	att_in_x = self.att[idx]
-			#
-			# 	idx_in_att = np.where(self.att_label_by_cls == x_label)[0][0]
-			# 	att_in_att = self.att_by_cls[idx_in_att]
-			# 	att_label_in_att = self.att_label_by_cls[idx_in_att]
-			#
-			# 	assert x_label == att_label_in_att
-			# 	assert np.array_equal(att_in_x, att_in_att)
-			# print('att in x match att in att_cls!!')
+			for idx, x in enumerate(self.x):
+				x_label = self.x_label[idx]
+				att_in_x = self.att[idx]
 
-			self.att = self.att_by_cls
-			self.att_label = self.att_label_by_cls
+				idx_in_att = np.where(att_cls_label == x_label)[0][0]
+				att_in_att = att_cls[idx_in_att]
+				att_label_in_att = att_cls_label[idx_in_att]
+
+				assert x_label == att_label_in_att
+				assert np.array_equal(att_in_x, att_in_att)
+			print('att in x match att in att_cls!!')
+
+			self.att = att_cls
+			self.att_label = att_cls_label
 
 		else:
 			self.x = io.loadmat(os.path.join(root, 'test_cub_googlenet_bn.mat'))
@@ -118,12 +127,10 @@ class Cub(Dataset):
 		selected_x_label = []
 		for att_label in selected_att_label:
 			# randomly select 1 img which has the same label.
-			idxs = np.random.choice(np.where(self.x_label == att_label)[0], self.k_query)[0]
+			idx = np.random.choice(np.where(self.x_label == att_label)[0], 1)[0]
 			# get the img's features and img's label
-			f = self.x[idxs]
-			f_label = self.x_label[idxs]
-
-			# todo:
+			f = self.x[idx]
+			f_label = self.x_label[idx]
 
 			selected_x.append(f)
 			selected_x_label.append(f_label)
@@ -139,7 +146,7 @@ class Cub(Dataset):
 		att_label = torch.from_numpy(selected_att_label).long()
 
 		# shuffle x & x_label in case it owns the same order with att_label
-		# shuffle_idx = torch.randperm(self.n_way)
+		shuffle_idx = torch.randperm(self.n_way)
 		# x = x[shuffle_idx]
 		# x_label = x_label[shuffle_idx]
 
