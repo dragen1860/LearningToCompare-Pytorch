@@ -71,6 +71,7 @@ if __name__ == '__main__':
 
 					net.eval()
 					pred, correct = net(support_x, support_y, query_x, query_y, False)
+					correct = correct.sum() # multi-gpu support
 					total_correct += correct.data[0]
 					total_num += query_y.size(0) * query_y.size(1)
 
